@@ -34,7 +34,8 @@ import sys
 def get_token():
     '''Return your personal access token'''
     
-    return 'DEV-7bc5a057346d5725bf4a5917cac0ad0e0add6c08'
+    # TODO add secure way of including token
+    return token
 
 def create_graph(edges):
     # Create empty graph
