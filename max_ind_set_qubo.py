@@ -27,17 +27,17 @@ import matplotlib
 matplotlib.use("agg")
 import matplotlib.pyplot as plt
 
-# import sys to enable entry of params when running program
-import sys
-# TODO update code to allow for entry of lagrange and chain_strength params
-
 def get_token():
     '''Return your personal access token'''
     
-    # TODO add secure way of including token
     return token
 
 def create_graph(edges):
+    """Returns a graph based on the specified list of edges.
+
+    Args:
+        edges(list of tuples): each tuple represents an edge in the graph
+    """
     # Create empty graph
     G = nx.Graph()
 
@@ -46,16 +46,19 @@ def create_graph(edges):
 
     return G
 
-def get_qubo(S, gamma, edges):
+def get_qubo(nodes, edges):
     """Returns a dictionary representing a QUBO.
 
     Args:
-        S(list of integers): the value for each box
+        nodes(list of integers): nodes for the graph
     """
-    # Q = {(1, 2): 3.0, (0, 2): 3.0, (1, 3): 3.0, (2, 3): 3.0, (0, 0): -1.0, (1, 1): -1.0, (2, 2): -1.0, (3, 3): -1.0}
+    # Set gamma
+    gamma = 3
+    
+    # Create QUBO
     Q = {}
-    for i in range(len(S)):
-        for j in range(len(S)):
+    for i in range(len(nodes)):
+        for j in range(len(nodes)):
             if j > i and (i, j) in edges:
                 Q[(i, j)] = gamma
             elif j < i:
@@ -64,19 +67,18 @@ def get_qubo(S, gamma, edges):
                 Q[(i, i)] = -1
     
     # Print qubo in matrix form
-    # for i in range(len(S)):
+    # for i in range(len(nodes)):
     #     my_line = ''
-    #     for j in range(len(S)):
+    #     for j in range(len(nodes)):
     #         if (i,j) in Q:
     #             my_line += '\t' + str(Q[(i,j)])
     #         else:
     #             my_line += '\t' + str(0)
     #     print(my_line)
 
-    # print(Q)
     return Q
 
-def run_on_qpu(Q, sampler, chainstrength=1, numruns=10):
+def run_on_qpu(Q, sampler, chainstrength, numruns):
     """Runs the QUBO problem Q on the sampler provided.
 
     Args:
@@ -90,19 +92,15 @@ def run_on_qpu(Q, sampler, chainstrength=1, numruns=10):
 ## ------- Main program -------
 if __name__ == "__main__":
 
-    S = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (4, 5), (4, 6), (5, 6), (5, 7), (6, 8), (7,8)]
-    # S = [0, 1, 2, 3]
-    # edges = [(0, 1), (0, 2), (1, 3), (2, 3)]    
-    
-    gamma = 3
+    nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (4, 5), (4, 6), (5, 6), (5, 7), (6, 8), (7, 8)]  
     
     token = get_token()
     G = create_graph(edges)
-    Q = get_qubo(S, gamma, edges)
+    Q = get_qubo(nodes, edges)
 
     chainstrength = 1 # update
-    numruns = 100 # update
+    numruns = 10 # update
 
     # Define the sampler and run the problem
     sampler = EmbeddingComposite(DWaveSampler(endpoint='https://cloud.dwavesys.com/sapi/', token=token, solver={'qpu': True}))
@@ -110,25 +108,33 @@ if __name__ == "__main__":
 
     # Print the solution
     print('Maximum independent set size found is', sum(sample_set.first.sample.values()))
-    print(sample_set.first)
+    # print(sample_set.first.sample)
+    
+    # Generate list of nodes in final solution
+    binaryResult = list(sample_set.first.sample.values())
+    vertices = []
+    for i in range(len(binaryResult)):
+        if binaryResult[i] == 1:
+            vertices.append(i)
+    print(vertices)
 
-    # # Visualize the results
-    # subset_1 = G.subgraph(S)
-    # notS = list(set(G.nodes()) - set(S))
-    # subset_0 = G.subgraph(notS)
-    # pos = nx.spring_layout(G)
-    # plt.figure()
+    # Visualize the results
+    subset_1 = G.subgraph(vertices)
+    notVertices = list(set(G.nodes()) - set(vertices))
+    subset_0 = G.subgraph(notVertices)
+    pos = nx.spring_layout(G)
+    plt.figure()
 
-    # # Save original problem graph
-    # original_name = "antenna_plot_original.png"
-    # nx.draw_networkx(G, pos=pos, with_labels=True)
-    # plt.savefig(original_name, bbox_inches='tight')
+    # Save original problem graph
+    original_name = "graph_original.png"
+    nx.draw_networkx(G, pos=pos, with_labels=True)
+    plt.savefig(original_name, bbox_inches='tight')
 
-    # # Save solution graph
-    # # Note: red nodes are in the set, blue nodes are not
-    # solution_name = "antenna_plot_solution.png"
-    # nx.draw_networkx(subset_1, pos=pos, with_labels=True, node_color='r', font_color='k')
-    # nx.draw_networkx(subset_0, pos=pos, with_labels=True, node_color='b', font_color='w')
-    # plt.savefig(solution_name, bbox_inches='tight')
+    # Save solution graph
+    # Note: red nodes are in the set, blue nodes are not
+    solution_name = "graph_solution.png"
+    nx.draw_networkx(subset_1, pos=pos, with_labels=True, node_color='r', font_color='k')
+    nx.draw_networkx(subset_0, pos=pos, with_labels=True, node_color='b', font_color='w')
+    plt.savefig(solution_name, bbox_inches='tight')
 
-    # print("Your plots are saved to {} and {}".format(original_name, solution_name))
+    print("Your plots are saved to {} and {}".format(original_name, solution_name))
