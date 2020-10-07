@@ -46,6 +46,7 @@ def get_qubo(nodes, edges):
 
     Args:
         nodes(list of integers): nodes for the graph
+        edges(list of tuples): each tuple represents an edge in the graph
     """
     # Set gamma
     gamma = 3
