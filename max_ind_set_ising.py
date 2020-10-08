@@ -48,18 +48,18 @@ def get_ising(nodes, edges):
         nodes(list of integers): nodes for the graph
         edges(list of tuples): each tuple represents an edge in the graph
     """
-    # Set gamma
-    gamma = 1
+    # # Set gamma
+    # gamma = 1
     
     # Create Ising
     h = {}
     J = {}
 
+    first_node = list(G.nodes.keys())[0]
     for i in G.nodes:        
-        h[(0, i)] = 2 * gamma
+        h[(first_node, i)] = 2 
     for i, j in G.edges:
-        J[(i, j)] = 4 * gamma
-
+        J[(i, j)] = 4
     return h, J
 
 def run_on_qpu(h, J, sampler, chainstrength, num_reads):
