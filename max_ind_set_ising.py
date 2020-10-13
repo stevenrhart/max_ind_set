@@ -22,10 +22,14 @@ import dwave_networkx as dnx
 # Import dwave.system packages for the QPU
 from dwave.system import DWaveSampler, EmbeddingComposite
 
+# Import BQM package for conversions
+from dimod import BinaryQuadraticModel
+
 # Import matplotlib.pyplot to draw graphs on screen
 import matplotlib
 matplotlib.use("agg")
 import matplotlib.pyplot as plt
+from dwave.system import EmbeddingComposite, DWaveSampler
 
 def create_graph(edges):
     """Returns a graph based on the specified list of edges.
@@ -41,66 +45,95 @@ def create_graph(edges):
 
     return G
 
+
 def get_ising(nodes, edges):
-    """Returns a dictionary representing the Ising formulation.
+    """Returns two dictionaries (h and J) representing an ising model.
 
     Args:
         nodes(list of integers): nodes for the graph
         edges(list of tuples): each tuple represents an edge in the graph
     """
-    # # Set gamma
-    # gamma = 1
-    
-    # Create Ising
-    h = {}
-    J = {}
-
-    first_node = list(G.nodes.keys())[0]
-    for i in G.nodes:        
-        h[(first_node, i)] = 2 
+    # Create QUBO
+    gamma = 3
+    Q = {}
+    for i in G.nodes:
+        Q[(i, i)] = -1
     for i, j in G.edges:
-        J[(i, j)] = 4
+        Q[(i, j)] = gamma
+
+    # Convert to bqm
+    bqm = BinaryQuadraticModel.from_qubo(Q)
+
+    # Convert to Ising model
+    ising_model = bqm.to_ising()
+    
+    # Define h and J
+    h = ising_model[0] 
+    J = ising_model[1]
+    print(h,'\n',J)
     return h, J
 
-def run_on_qpu(h, J, sampler, chainstrength, num_reads):
-    """Runs the Ising problem I on the sampler provided.
+
+def run_on_qpu(h, J, sampler, num_reads):
+    """Runs the Ising problem on the sampler provided.
 
     Args:
         h(dict): a representation of the linear terms of the ising problem
-        h(dict): a representation of the quadratic terms of the ising problem
+        J(dict): a representation of the quadratic terms of the ising problem
         sampler(dimod.Sampler): a sampler that uses the QPU
     """
-    sample_set = sampler.sample_ising(h, J, chain_strength=chainstrength, num_reads=num_reads)
+    sample_set = sampler.sample_ising(h, J, num_reads=num_reads)
 
     return sample_set
 
+    
 ## ------- Main program -------
 if __name__ == "__main__":
 
-    # # Test Graph 1 
-    nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (4, 5), (4, 6), (5, 6), (5, 7), (6, 8), (7, 8)]
+    ###############
+    # TEST GRAPHS #
+    ###############
 
-    # # Test Graph 2
+    # Test Graph 0 (solution = 2)
+    nodes = [0, 1, 2]
+    edges = [(0, 1), (1, 2)]
+
+    # # Test Graph 1 (solution = 2)
+    # nodes = [0, 1, 2, 3, 4]
+    # edges = [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4), (3, 4)]
+
+    # # Test Graph 2 (solution = 5)
+    # nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    # edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (4, 6), (5, 6), (5, 7), (6, 8), (7, 8)]
+
+    # # Test Graph 3 (solution = 5)
     # nodes = [0, 1, 2, 3, 4, 5, 6, 7]
     # edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (3, 6), (4, 7), (6, 7)]
-    
-    # Training wheels test graph
-    # nodes = [0, 1, 2, 3]
-    # edges = [(0, 1), (0, 2), (1, 3), (2, 3)]
 
+    # # Test Graph 4 (solution = 9)
+    # nodes = list(i for i in range(24))
+    # edges = [(12, 16), (12, 20), (13, 17), (13, 21), (14, 18), (14, 22), (15, 19), (15, 23), (16, 20),
+    #  (16, 12), (17, 21), (17, 13), (18, 22), (18, 14), (19, 23), (19, 15), (20, 12), (20, 16), (21, 13),
+    #  (21, 17), (22, 14), (22, 18), (23, 15), (23, 19), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), 
+    #  (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (0, 11), (0, 12), (1, 13), (2, 14), (3, 15), (4, 16), 
+    #  (5, 17), (6, 18), (7, 19), (8, 20), (9, 21), (10, 22), (11, 23)]
+    
+    #####################
+    
     G = create_graph(edges)
     h, J = get_ising(nodes, edges)
 
-    chainstrength = 1 # update
+    # chainstrength = 1 # update
     num_reads = 10 # update
 
     # Define the sampler and run the problem
     sampler = EmbeddingComposite(DWaveSampler(endpoint='https://cloud.dwavesys.com/sapi/', solver={'qpu': True}))
-    sample_set = run_on_qpu(h, J, sampler, chainstrength, num_reads)
+    
+    # Run the problem on the sampler and print the results
+    sample_set = run_on_qpu(h, J, sampler, num_reads)
 
     # Print the solution
-    # print(sample_set)    
+    print(sample_set)    
     spinResult = list(sample_set.first.sample[i] for i in nodes)
     vertices = []
     for i in range(len(spinResult)):

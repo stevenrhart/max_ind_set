@@ -41,8 +41,8 @@ def create_graph(edges):
 
     return G
 
-def get_qubo(nodes, edges):
-    """Returns a dictionary representing a QUBO.
+def get_ising(nodes, edges):
+    """Returns a dictionary representing the Ising formulation.
 
     Args:
         nodes(list of integers): nodes for the graph
@@ -51,23 +51,34 @@ def get_qubo(nodes, edges):
     # Set gamma
     gamma = 3
     
-    # Create QUBO
-    Q = {}
-    for i in G.nodes:
-        Q[(i, i)] = -1
-    for i, j in G.edges:
-        Q[(i, j)] = gamma
-    print(Q)
-    return Q
+    # Create Ising
+    h = {}
+    J = {}
 
-def run_on_qpu(Q, sampler, chainstrength, num_reads):
-    """Runs the QUBO problem Q on the sampler provided.
+    min_node = min(nodes)
+    edge_dict = dict.fromkeys(nodes, 0)
+
+    # TODO - Fix this code to generate the Ising representation correctly
+    for u, v in G.edges:
+        J[(u, v)] = 0.25*gamma
+        edge_dict[u] += 1
+        edge_dict[v] += 1
+    for n in G.nodes:
+        h[(min_node, n)] = (0.75*edge_dict[n] - 0.5)
+    
+    print(h)
+    print(J)
+    return h, J
+
+def run_on_qpu(h, J, sampler, chainstrength, num_reads):
+    """Runs the Ising problem on the sampler provided.
 
     Args:
-        Q(dict): a representation of a QUBO
+        h(dict): a representation of the linear terms of the ising problem
+        J(dict): a representation of the quadratic terms of the ising problem
         sampler(dimod.Sampler): a sampler that uses the QPU
     """
-    sample_set = sampler.sample_qubo(Q, chain_strength=chainstrength, num_reads=num_reads)
+    sample_set = sampler.sample_ising(h, J, chain_strength=chainstrength, num_reads=num_reads)
 
     return sample_set
 
@@ -78,14 +89,19 @@ if __name__ == "__main__":
     nodes = [0, 1, 2]
     edges = [(0, 1), (1, 2)]
 
-    # # Test Graph 1 
-    # nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-    # edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (4, 5), (4, 6), (5, 6), (5, 7), (6, 8), (7, 8)]
+    # # Test Graph 1 (solution = 2)
+    # nodes = [0, 1, 2, 3, 4]
+    # edges = [(0, 1), (0, 2), (1, 2), (1, 3), (2, 4), (3, 4)]
 
-    # Test Graph 2
+    # # Test Graph 2 (solution = 5)
+    # nodes = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    # edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (4, 6), (5, 6), (5, 7), (6, 8), (7, 8)]
+
+    # # Test Graph 3 (solution = 5)
     # nodes = [0, 1, 2, 3, 4, 5, 6, 7]
     # edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (3, 6), (4, 7), (6, 7)]
 
+    # # Test Graph 4 (solution = 9)
     # nodes = list(i for i in range(24))
     # edges = [(12, 16), (12, 20), (13, 17), (13, 21), (14, 18), (14, 22), (15, 19), (15, 23), (16, 20),
     #  (16, 12), (17, 21), (17, 13), (18, 22), (18, 14), (19, 23), (19, 15), (20, 12), (20, 16), (21, 13),
@@ -93,26 +109,28 @@ if __name__ == "__main__":
     #  (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (0, 11), (0, 12), (1, 13), (2, 14), (3, 15), (4, 16), 
     #  (5, 17), (6, 18), (7, 19), (8, 20), (9, 21), (10, 22), (11, 23)]
     
+    # Create graph
     G = create_graph(edges)
-    Q = get_qubo(nodes, edges)
 
+    # Get Ising formulation
+    h, J = get_ising(nodes, edges)
+
+    # Set chainstrength and num_reads
     chainstrength = 1 # update
-    num_reads = 10 # update
+    num_reads = 100 # update
 
     # Define the sampler and run the problem
     sampler = EmbeddingComposite(DWaveSampler(endpoint='https://cloud.dwavesys.com/sapi/', solver={'qpu': True}))
-    sample_set = run_on_qpu(Q, sampler, chainstrength, num_reads)
-    print(sample_set)
+    sample_set = run_on_qpu(h, J, sampler, chainstrength, num_reads)
 
     # Print the solution
-    print('Maximum independent set size found is', sum(sample_set.first.sample.values()))
-    
-    # Generate list of nodes in final solution
-    binaryResult = list(sample_set.first.sample.values())
+    print(sample_set)    
+    spinResult = list(sample_set.first.sample[i] for i in nodes)
     vertices = []
-    for i in range(len(binaryResult)):
-        if binaryResult[i] == 1:
+    for i in range(len(spinResult)):
+        if spinResult[i] == 1:
             vertices.append(i)
+    print('Maximum independent set size found is', (len(vertices)))
     print(vertices)
 
     # Visualize the results
