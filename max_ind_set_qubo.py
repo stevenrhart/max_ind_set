@@ -102,17 +102,15 @@ if __name__ == "__main__":
     # Define the sampler and run the problem
     sampler = EmbeddingComposite(DWaveSampler(endpoint='https://cloud.dwavesys.com/sapi/', solver={'qpu': True}))
     sample_set = run_on_qpu(Q, sampler, chainstrength, num_reads)
-    print(sample_set)
-
-    # Print the solution
-    print('Maximum independent set size found is', sum(sample_set.first.sample.values()))
     
-    # Generate list of nodes in final solution
-    binaryResult = list(sample_set.first.sample.values())
+    # Print the solution
+    print(sample_set)    
+    result = list(sample_set.first.sample[i] for i in nodes)
     vertices = []
-    for i in range(len(binaryResult)):
-        if binaryResult[i] == 1:
+    for i in range(len(result)):
+        if result[i] == 1:
             vertices.append(i)
+    print('Maximum independent set size found is', (len(vertices)))
     print(vertices)
 
     # Visualize the results

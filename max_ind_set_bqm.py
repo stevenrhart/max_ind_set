@@ -22,10 +22,14 @@ import dwave_networkx as dnx
 # Import dwave.system packages for the QPU
 from dwave.system import DWaveSampler, EmbeddingComposite
 
+# Import BQM package for conversions
+from dimod import BinaryQuadraticModel
+
 # Import matplotlib.pyplot to draw graphs on screen
 import matplotlib
 matplotlib.use("agg")
 import matplotlib.pyplot as plt
+from dwave.system import EmbeddingComposite, DWaveSampler
 
 def create_graph(edges):
     """Returns a graph based on the specified list of edges.
@@ -41,62 +45,38 @@ def create_graph(edges):
 
     return G
 
-def get_ising(nodes, edges):
-    """Returns a dictionary representing the Ising formulation.
+
+def get_bqm(nodes, edges):
+    """Returns a bqm representation of the problem.
 
     Args:
         nodes(list of integers): nodes for the graph
         edges(list of tuples): each tuple represents an edge in the graph
     """
-    # Set gamma
+    # Create QUBO based on min((-1 * (SUMxi)) + (gamma * (SUMxi*xj))
     gamma = 3
+    Q = {}
     
-    # Create empty Ising dicts for h and J
-    h = {}
-    J = {}
-
-    # Create dict to track number of edges per node
-    edge_dict = dict.fromkeys(nodes, 0)
-
-    # Populate Ising representation
-    for u, v in G.edges:
-        J[(u, v)] = gamma / 4
-        
-        # Populate edge_dict 
-        if u in edge_dict:
-            edge_dict[u] = edge_dict[u] + 1
-        else:
-            edge_dict[u] = 1
-        if v in edge_dict:
-            edge_dict[v] = edge_dict[v] + 1
-        else:
-            edge_dict[v] = 1
+    for i in G.nodes:
+        Q[(i, i)] = -1
+    for i, j in G.edges:
+        Q[(i, j)] = gamma
     
-    for n in G.nodes:
-        h[n] = -1 * (0.5) + (gamma * (edge_dict[n] * 0.25))
+    # Convert to bqm
+    bqm = BinaryQuadraticModel.from_qubo(Q)
 
-    print(h, '\n', J)
-
-    return h, J
-
-def run_on_qpu(h, J, sampler, num_reads):
-    """Runs the Ising problem on the sampler provided.
-
-    Args:
-        h(dict): a representation of the linear terms of the ising problem
-        J(dict): a representation of the quadratic terms of the ising problem
-        sampler(dimod.Sampler): a sampler that uses the QPU
-    """
-    sample_set = sampler.sample_ising(h, J, num_reads=num_reads)
-
-    return sample_set
-
+    return bqm
+    
 ## ------- Main program -------
 if __name__ == "__main__":
 
-    # # Test Graph 0 (solution = 2)
-    # nodes = [0, 1, 2]
-    # edges = [(0, 1), (1, 2)]
+    ###############
+    # TEST GRAPHS #
+    ###############
+
+    # Test Graph 0 (solution = 2)
+    nodes = [0, 1, 2]
+    edges = [(0, 1), (1, 2)]
 
     # # Test Graph 1 (solution = 2)
     # nodes = [0, 1, 2, 3, 4]
@@ -110,33 +90,28 @@ if __name__ == "__main__":
     # nodes = [0, 1, 2, 3, 4, 5, 6, 7]
     # edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (3, 6), (4, 7), (6, 7)]
 
-    # Test Graph 4 (solution = 9)
-    nodes = list(i for i in range(24))
-    edges = [(12, 16), (12, 20), (13, 17), (13, 21), (14, 18), (14, 22), (15, 19), (15, 23), (16, 20),
-     (17, 21), (18, 22), (19, 23), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9),
-     (9, 10), (10, 11), (0, 11), (0, 12), (1, 13), (2, 14), (3, 15), (4, 16), (5, 17), (6, 18), (7, 19),
-     (8, 20), (9, 21), (10, 22), (11, 23)]
+    # # Test Graph 4 (solution = 9)
+    # nodes = list(i for i in range(24))
+    # edges = [(12, 16), (12, 20), (13, 17), (13, 21), (14, 18), (14, 22), (15, 19), (15, 23), (16, 20),
+    #  (17, 21), (18, 22), (19, 23), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9),
+    #  (9, 10), (10, 11), (0, 11), (0, 12), (1, 13), (2, 14), (3, 15), (4, 16), (5, 17), (6, 18), (7, 19),
+    #  (8, 20), (9, 21), (10, 22), (11, 23)]
     
-    # Create graph
+    #####################
+    
     G = create_graph(edges)
-
-    # Get Ising formulation
-    h, J = get_ising(nodes, edges)
-
-    # Set chainstrength and num_reads
-    # chainstrength = 1 # update # Do I need to pass chainstrength? Or should I?
-    num_reads = 10 # update
+    bqm = get_bqm(nodes, edges)
 
     # Define the sampler and run the problem
-    sampler = EmbeddingComposite(DWaveSampler(endpoint='https://cloud.dwavesys.com/sapi/', solver={'qpu': True}))
-    sample_set = run_on_qpu(h, J, sampler, num_reads)
+    sampler = EmbeddingComposite(DWaveSampler())
+    sample_set = sampler.sample(bqm, sampler)
 
     # Print the solution
     print(sample_set)    
-    spinResult = list(sample_set.first.sample[i] for i in nodes)
+    result = list(sample_set.first.sample[i] for i in nodes)
     vertices = []
-    for i in range(len(spinResult)):
-        if spinResult[i] == 1:
+    for i in range(len(result)):
+        if result[i] == 1:
             vertices.append(i)
     print('Maximum independent set size found is', (len(vertices)))
     print(vertices)
@@ -160,4 +135,4 @@ if __name__ == "__main__":
     nx.draw_networkx(subset_0, pos=pos, with_labels=True, node_color='b', font_color='w')
     plt.savefig(solution_name, bbox_inches='tight')
 
-    print("Your plots are saved to {} and {}".format(original_name, solution_name))
+    # print("Your plots are saved to {} and {}".format(original_name, solution_name))
