@@ -51,26 +51,35 @@ def get_ising(nodes, edges):
     # Set gamma
     gamma = 3
     
-    # Create Ising
+    # Create empty Ising dicts for h and J
     h = {}
     J = {}
 
-    min_node = min(nodes)
+    # Create dict to track number of edges per node
     edge_dict = dict.fromkeys(nodes, 0)
 
-    # TODO - Fix this code to generate the Ising representation correctly
+    # Populate Ising representation
     for u, v in G.edges:
-        J[(u, v)] = 0.25*gamma
-        edge_dict[u] += 1
-        edge_dict[v] += 1
-    for n in G.nodes:
-        h[(min_node, n)] = (0.75*edge_dict[n] - 0.5)
+        J[(u, v)] = gamma / 4
+        
+        # Populate edge_dict 
+        if u in edge_dict:
+            edge_dict[u] = edge_dict[u] + 1
+        else:
+            edge_dict[u] = 1
+        if v in edge_dict:
+            edge_dict[v] = edge_dict[v] + 1
+        else:
+            edge_dict[v] = 1
     
-    print(h)
-    print(J)
+    for n in G.nodes:
+        h[n] = -1 * (0.5) + (gamma * (edge_dict[n] * 0.25))
+
+    print(h, '\n', J)
+
     return h, J
 
-def run_on_qpu(h, J, sampler, chainstrength, num_reads):
+def run_on_qpu(h, J, sampler, num_reads):
     """Runs the Ising problem on the sampler provided.
 
     Args:
@@ -78,16 +87,16 @@ def run_on_qpu(h, J, sampler, chainstrength, num_reads):
         J(dict): a representation of the quadratic terms of the ising problem
         sampler(dimod.Sampler): a sampler that uses the QPU
     """
-    sample_set = sampler.sample_ising(h, J, chain_strength=chainstrength, num_reads=num_reads)
+    sample_set = sampler.sample_ising(h, J, num_reads=num_reads)
 
     return sample_set
 
 ## ------- Main program -------
 if __name__ == "__main__":
 
-    # Test Graph 0 (solution = 2)
-    nodes = [0, 1, 2]
-    edges = [(0, 1), (1, 2)]
+    # # Test Graph 0 (solution = 2)
+    # nodes = [0, 1, 2]
+    # edges = [(0, 1), (1, 2)]
 
     # # Test Graph 1 (solution = 2)
     # nodes = [0, 1, 2, 3, 4]
@@ -101,13 +110,12 @@ if __name__ == "__main__":
     # nodes = [0, 1, 2, 3, 4, 5, 6, 7]
     # edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (3, 6), (4, 7), (6, 7)]
 
-    # # Test Graph 4 (solution = 9)
-    # nodes = list(i for i in range(24))
-    # edges = [(12, 16), (12, 20), (13, 17), (13, 21), (14, 18), (14, 22), (15, 19), (15, 23), (16, 20),
-    #  (16, 12), (17, 21), (17, 13), (18, 22), (18, 14), (19, 23), (19, 15), (20, 12), (20, 16), (21, 13),
-    #  (21, 17), (22, 14), (22, 18), (23, 15), (23, 19), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), 
-    #  (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (0, 11), (0, 12), (1, 13), (2, 14), (3, 15), (4, 16), 
-    #  (5, 17), (6, 18), (7, 19), (8, 20), (9, 21), (10, 22), (11, 23)]
+    # Test Graph 4 (solution = 9)
+    nodes = list(i for i in range(24))
+    edges = [(12, 16), (12, 20), (13, 17), (13, 21), (14, 18), (14, 22), (15, 19), (15, 23), (16, 20),
+     (17, 21), (18, 22), (19, 23), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9),
+     (9, 10), (10, 11), (0, 11), (0, 12), (1, 13), (2, 14), (3, 15), (4, 16), (5, 17), (6, 18), (7, 19),
+     (8, 20), (9, 21), (10, 22), (11, 23)]
     
     # Create graph
     G = create_graph(edges)
@@ -116,12 +124,12 @@ if __name__ == "__main__":
     h, J = get_ising(nodes, edges)
 
     # Set chainstrength and num_reads
-    chainstrength = 1 # update
-    num_reads = 100 # update
+    # chainstrength = 1 # update # Do I need to pass chainstrength? Or should I?
+    num_reads = 10 # update
 
     # Define the sampler and run the problem
     sampler = EmbeddingComposite(DWaveSampler(endpoint='https://cloud.dwavesys.com/sapi/', solver={'qpu': True}))
-    sample_set = run_on_qpu(h, J, sampler, chainstrength, num_reads)
+    sample_set = run_on_qpu(h, J, sampler, num_reads)
 
     # Print the solution
     print(sample_set)    
