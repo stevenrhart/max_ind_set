@@ -62,7 +62,7 @@ def get_ising(nodes, edges):
     for u, v in G.edges:
         J[(u, v)] = gamma / 4
         
-        # Populate edge_dict based on the number of edges each node is a part of 
+        # Populate edge_dict for number of edges per node
         if u in edge_dict:
             edge_dict[u] = edge_dict[u] + 1
         else:
