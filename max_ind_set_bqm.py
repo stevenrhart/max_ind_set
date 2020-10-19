@@ -107,7 +107,7 @@ if __name__ == "__main__":
     sample_set = sampler.sample(bqm, sampler)
 
     # Print the solution
-    print(sample_set)    
+    # print(sample_set)
     result = list(sample_set.first.sample[i] for i in nodes)
     vertices = []
     for i in range(len(result)):

@@ -104,7 +104,7 @@ if __name__ == "__main__":
     sample_set = run_on_qpu(Q, sampler, chainstrength, num_reads)
     
     # Print the solution
-    print(sample_set)    
+    # print(sample_set)
     result = list(sample_set.first.sample[i] for i in nodes)
     vertices = []
     for i in range(len(result)):
