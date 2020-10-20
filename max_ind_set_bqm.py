@@ -29,7 +29,6 @@ from dimod import BinaryQuadraticModel
 import matplotlib
 matplotlib.use("agg")
 import matplotlib.pyplot as plt
-from dwave.system import EmbeddingComposite, DWaveSampler
 
 def create_graph(edges):
     """Returns a graph based on the specified list of edges.
@@ -74,9 +73,9 @@ if __name__ == "__main__":
     # TEST GRAPHS #
     ###############
 
-    # Test Graph 0 (solution = 2)
-    nodes = [0, 1, 2]
-    edges = [(0, 1), (1, 2)]
+    # # Test Graph 0 (solution = 2)
+    # nodes = [0, 1, 2]
+    # edges = [(0, 1), (1, 2)]
 
     # # Test Graph 1 (solution = 2)
     # nodes = [0, 1, 2, 3, 4]
@@ -90,12 +89,11 @@ if __name__ == "__main__":
     # nodes = [0, 1, 2, 3, 4, 5, 6, 7]
     # edges = [(0, 1), (0, 2), (1, 3), (2, 3), (3, 4), (3, 5), (3, 6), (4, 7), (6, 7)]
 
-    # # Test Graph 4 (solution = 9)
-    # nodes = list(i for i in range(24))
-    # edges = [(12, 16), (12, 20), (13, 17), (13, 21), (14, 18), (14, 22), (15, 19), (15, 23), (16, 20),
-    #  (17, 21), (18, 22), (19, 23), (0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9),
-    #  (9, 10), (10, 11), (0, 11), (0, 12), (1, 13), (2, 14), (3, 15), (4, 16), (5, 17), (6, 18), (7, 19),
-    #  (8, 20), (9, 21), (10, 22), (11, 23)]
+    # Test Graph 4 (solution = 9)
+    nodes = list(i for i in range(24))
+    edges = [(0, 1), (1, 2), (2, 3), (3, 4), (4, 5), (5, 6), (6, 7), (7, 8), (8, 9), (9, 10), (10, 11), (0, 11), 
+    (0, 12), (1, 13), (2, 14), (3, 15), (4, 16), (5, 17), (6, 18), (7, 19), (8, 20), (9, 21), (10, 22), (11, 23),
+    (12, 16), (12, 20), (13, 17), (13, 21), (14, 18), (14, 22), (15, 19), (15, 23), (16, 20), (17, 21), (18, 22), (19, 23)]
     
     #####################
     
@@ -104,7 +102,7 @@ if __name__ == "__main__":
 
     # Define the sampler and run the problem
     sampler = EmbeddingComposite(DWaveSampler())
-    sample_set = sampler.sample(bqm, sampler)
+    sample_set = sampler.sample(bqm)
 
     # Print the solution
     # print(sample_set)
